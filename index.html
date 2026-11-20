@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2026 매출 대시보드</title>
+<style>
+:root{
+  color-scheme: light;
+  --plane:#f3f3f0; --surface:#fcfcfb; --chip:#f0efec; --chip-on:#0b0b0b; --chip-on-ink:#ffffff;
+  --ink:#0b0b0b; --ink2:#52514e; --ink3:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --ring:rgba(11,11,11,.10); --hover:rgba(11,11,11,.04);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4;
+  --dim:#dcdbd5; --good:#0ca30c; --crit:#d03b3b; --warn:#b77d00;
+  --sans: system-ui, -apple-system, "Segoe UI", "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --plane:#0d0d0d; --surface:#1a1a19; --chip:#2c2c2a; --chip-on:#f0efec; --chip-on-ink:#0b0b0b;
+    --ink:#f0efec; --ink2:#c3c2b7; --ink3:#898781;
+    --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10); --hover:rgba(255,255,255,.05);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+    --dim:#383835; --warn:#fab219;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --plane:#0d0d0d; --surface:#1a1a19; --chip:#2c2c2a; --chip-on:#f0efec; --chip-on-ink:#0b0b0b;
+  --ink:#f0efec; --ink2:#c3c2b7; --ink3:#898781;
+  --grid:#2c2c2a; --axis:#383835; --ring:rgba(255,255,255,.10); --hover:rgba(255,255,255,.05);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181;
+  --dim:#383835; --warn:#fab219;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--plane);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 24px 48px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:8px 24px;margin-bottom:18px}
+h1{font-size:22px;margin:0;letter-spacing:-.3px}
+.sub{color:var(--ink2);font-size:13px;margin-top:4px}
+.src{font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:6px}
+.src a{color:inherit}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ink3);display:inline-block}
+.dot.live{background:var(--good)} .dot.snap{background:var(--warn)}
+
+.filters{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:12px 14px;display:grid;gap:8px;margin-bottom:16px}
+.frow{display:flex;align-items:flex-start;gap:10px}
+.flabel{flex:0 0 40px;font-size:12px;color:var(--ink2);padding-top:6px;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px;flex:1}
+.chip{border:0;background:var(--chip);color:var(--ink);font:inherit;font-size:13px;padding:5px 11px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.chip:hover{box-shadow:inset 0 0 0 1px var(--axis)}
+.chip[aria-pressed="true"]{background:var(--chip-on);color:var(--chip-on-ink)}
+.chip.all{color:var(--ink2)}
+.chip.all[aria-pressed="true"]{color:var(--chip-on-ink)}
+.chip:focus-visible,.bar-hit:focus-visible,.col-hit:focus-visible{outline:2px solid var(--s1);outline-offset:2px}
+.reset{margin-left:auto;border:0;background:none;color:var(--s1);font:inherit;font-size:13px;cursor:pointer;padding:5px 2px;white-space:nowrap}
+.reset[hidden]{display:none}
+
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:14px 16px}
+.kpi .k{font-size:12px;color:var(--ink2)}
+.kpi .v{font-size:24px;font-weight:650;letter-spacing:-.4px;margin-top:4px;font-variant-numeric:tabular-nums}
+.kpi .d{font-size:12px;color:var(--ink3);margin-top:2px;font-variant-numeric:tabular-nums}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:16px;min-width:0}
+.card.wide{grid-column:1 / -1}
+.chead{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:6px 12px;margin-bottom:6px}
+h2{font-size:15px;margin:0}
+.hint{font-size:12px;color:var(--ink3)}
+.seg{display:inline-flex;background:var(--chip);border-radius:8px;padding:2px}
+.seg button{border:0;background:none;font:inherit;font-size:12px;color:var(--ink2);padding:4px 10px;border-radius:6px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--ring)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink2);margin:4px 0 6px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:10px;height:10px;border-radius:3px;display:inline-block}
+svg{display:block;width:100%;overflow:visible}
+svg text{font-family:var(--sans);fill:var(--ink2);font-size:11px}
+.tick{fill:var(--ink3)}
+.col-hit,.bar-hit{cursor:pointer;outline:none}
+.col-hit rect.bg,.bar-hit rect.bg{fill:transparent}
+.col-hit:hover rect.bg,.bar-hit:hover rect.bg{fill:var(--hover)}
+.bar-label{fill:var(--ink);font-size:12.5px}
+.bar-val{fill:var(--ink2);font-size:12px;font-variant-numeric:tabular-nums}
+.dimmed .bar-label{fill:var(--ink3)}
+
+.tip{position:fixed;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--ring);box-shadow:0 8px 24px rgba(0,0,0,.14);border-radius:10px;padding:10px 12px;font-size:12px;min-width:180px;z-index:10;opacity:0;transition:opacity .08s}
+.tip.on{opacity:1}
+.tip b{display:block;font-size:13px;margin-bottom:6px}
+.tip .r{display:flex;justify-content:space-between;gap:16px;font-variant-numeric:tabular-nums}
+.tip .r span:first-child{display:inline-flex;align-items:center;gap:6px;color:var(--ink2)}
+.tip .tot{border-top:1px solid var(--grid);margin-top:6px;padding-top:6px;font-weight:600}
+
+table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--grid);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font-size:12px;color:var(--ink2);font-weight:600}
+tfoot td{font-weight:650;border-bottom:0}
+td.zero{color:var(--ink3)}
+.tscroll{overflow-x:auto}
+footer{color:var(--ink3);font-size:12px;margin-top:16px}
+
+@media (max-width:820px){
+  .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:520px){
+  .wrap{padding:20px 16px 40px}
+  .frow{flex-direction:column;gap:4px}
+  .flabel{padding-top:0}
+  .reset{margin-left:0}
+  .kpi .v{font-size:20px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>2026 매출 대시보드</h1>
+      <div class="sub">월 · 제품 · 채널을 눌러 골라 보세요. 차트의 막대를 눌러도 됩니다.</div>
+    </div>
+    <div class="src" id="src"><span class="dot"></span>불러오는 중</div>
+  </header>
+
+  <section class="filters" aria-label="필터">
+    <div class="frow"><div class="flabel">월</div><div class="chips" id="f-month"></div></div>
+    <div class="frow"><div class="flabel">제품</div><div class="chips" id="f-product"></div></div>
+    <div class="frow"><div class="flabel">채널</div><div class="chips" id="f-channel"></div><button class="reset" id="reset" hidden>필터 모두 해제</button></div>
+  </section>
+
+  <section class="kpis" id="kpis"></section>
+
+  <section class="grid">
+    <div class="card wide">
+      <div class="chead">
+        <h2>월별 매출</h2>
+        <div class="seg" role="group" aria-label="쌓는 기준">
+          <button data-stack="channel" aria-pressed="true">채널별</button>
+          <button data-stack="product" aria-pressed="false">제품별</button>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div id="c-month"></div>
+    </div>
+    <div class="card">
+      <div class="chead"><h2>제품별 매출</h2><span class="hint">막대를 눌러 필터</span></div>
+      <div id="c-product"></div>
+    </div>
+    <div class="card">
+      <div class="chead"><h2>채널별 매출</h2><span class="hint">막대를 눌러 필터</span></div>
+      <div id="c-channel"></div>
+    </div>
+    <div class="card wide">
+      <div class="chead"><h2>제품 × 채널 매출표</h2><span class="hint" id="tbl-note"></span></div>
+      <div class="tscroll" id="table"></div>
+    </div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+/* 원본: [교육용 더미] 매출 데이터 2026 (구글 시트). 아래 SNAP은 시트를 못 읽을 때 쓰는 2026-11-20 사본. */
+const SHEET_ID = '1-zBK50MV6uZAbrAM4yd0IuwRC2TIXc7LE3yf2MaYs9c';
+const SHEET_GID = '581964629';
+const SNAP={months:["2026-01","2026-02","2026-03","2026-04","2026-05","2026-06","2026-07","2026-08","2026-09","2026-10"],products:["데일리 선크림","진정 시카 앰플","수분 장벽 크림","에센셜 마스크팩(10매)","약산성 클렌징폼"],channels:["올리브영","자사몰","쿠팡","아마존(해외)"],rows:[[0,0,0,439,19000,20,6672800],[0,0,1,209,19000,10,3573900],[0,0,2,330,19000,20,5016000],[0,0,3,237,19000,0,4503000],[0,1,0,600,24000,0,14400000],[0,1,1,300,24000,10,6480000],[0,1,2,487,24000,0,11688000],[0,1,3,404,24000,5,9211200],[0,2,0,587,28000,0,16436000],[0,2,1,323,28000,0,9044000],[0,2,2,502,28000,0,14056000],[0,2,3,351,28000,15,8353800],[0,3,0,795,15000,5,11328750],[0,3,1,324,15000,5,4617000],[0,3,2,521,15000,20,6252000],[0,3,3,422,15000,5,6013500],[0,4,0,746,12000,0,8952000],[0,4,1,369,12000,10,3985200],[0,4,2,497,12000,10,5367600],[0,4,3,371,12000,0,4452000],[1,0,0,566,19000,10,9678600],[1,0,1,242,19000,10,4138200],[1,0,2,365,19000,0,6935000],[1,0,3,305,19000,0,5795000],[1,1,0,595,24000,0,14280000],[1,1,1,318,24000,0,7632000],[1,1,2,456,24000,15,9302400],[1,1,3,388,24000,0,9312000],[1,2,0,650,28000,0,18200000],[1,2,1,267,28000,10,6728400],[1,2,2,426,28000,20,9542400],[1,2,3,439,28000,10,11062800],[1,3,0,921,15000,20,11052000],[1,3,1,394,15000,5,5614500],[1,3,2,627,15000,10,8464500],[1,3,3,537,15000,0,8055000],[1,4,0,715,12000,20,6864000],[1,4,1,371,12000,0,4452000],[1,4,2,528,12000,10,5702400],[1,4,3,481,12000,0,5772000],[2,0,0,741,19000,0,14079000],[2,0,1,405,19000,10,6925500],[2,0,2,496,19000,15,8010400],[2,0,3,578,19000,10,9883800],[2,1,0,664,24000,20,12748800],[2,1,1,292,24000,5,6657600],[2,1,2,373,24000,0,8952000],[2,1,3,342,24000,5,7797600],[2,2,0,506,28000,5,13459600],[2,2,1,246,28000,0,6888000],[2,2,2,314,28000,20,7033600],[2,2,3,303,28000,15,7211400],[2,3,0,844,15000,15,10761000],[2,3,1,391,15000,0,5865000],[2,3,2,546,15000,0,8190000],[2,3,3,595,15000,20,7140000],[2,4,0,733,12000,5,8356200],[2,4,1,308,12000,10,3326400],[2,4,2,425,12000,20,4080000],[2,4,3,389,12000,0,4668000],[3,0,0,968,19000,20,14713600],[3,0,1,554,19000,0,10526000],[3,0,2,710,19000,5,12815500],[3,0,3,835,19000,20,12692000],[3,1,0,680,24000,10,14688000],[3,1,1,261,24000,5,5950800],[3,1,2,503,24000,5,11468400],[3,1,3,396,24000,5,9028800],[3,2,0,406,28000,0,11368000],[3,2,1,204,28000,10,5140800],[3,2,2,260,28000,0,7280000],[3,2,3,235,28000,0,6580000],[3,3,0,737,15000,10,9949500],[3,3,1,415,15000,0,6225000],[3,3,2,591,15000,0,8865000],[3,3,3,489,15000,15,6234750],[3,4,0,691,12000,20,6633600],[3,4,1,347,12000,0,4164000],[3,4,2,513,12000,20,4924800],[3,4,3,466,12000,15,4753200],[4,0,0,1416,19000,15,22868400],[4,0,1,590,19000,10,10089000],[4,0,2,958,19000,5,17291900],[4,0,3,1103,19000,5,19909150],[4,1,0,662,24000,20,12710400],[4,1,1,308,24000,5,7022400],[4,1,2,422,24000,20,8102400],[4,1,3,434,24000,10,9374400],[4,2,0,328,28000,10,8265600],[4,2,1,121,28000,5,3218600],[4,2,2,221,28000,0,6188000],[4,2,3,247,28000,5,6570200],[4,3,0,751,15000,20,9012000],[4,3,1,396,15000,0,5940000],[4,3,2,594,15000,20,7128000],[4,3,3,552,15000,0,8280000],[4,4,0,747,12000,10,8067600],[4,4,1,348,12000,10,3758400],[4,4,2,480,12000,10,5184000],[4,4,3,587,12000,10,6339600],[5,0,0,1812,19000,20,27542400],[5,0,1,647,19000,5,11678350],[5,0,2,1025,19000,5,18501250],[5,0,3,1108,19000,5,19999400],[5,1,0,520,24000,20,9984000],[5,1,1,281,24000,5,6406800],[5,1,2,386,24000,20,7411200],[5,1,3,473,24000,15,9649200],[5,2,0,307,28000,5,8166200],[5,2,1,117,28000,10,2948400],[5,2,2,170,28000,10,4284000],[5,2,3,189,28000,5,5027400],[5,3,0,905,15000,5,12896250],[5,3,1,329,15000,10,4441500],[5,3,2,642,15000,0,9630000],[5,3,3,595,15000,15,7586250],[5,4,0,718,12000,0,8616000],[5,4,1,279,12000,10,3013200],[5,4,2,520,12000,15,5304000],[5,4,3,584,12000,10,6307200],[6,0,0,1657,19000,15,26760550],[6,0,1,874,19000,10,14945400],[6,0,2,1148,19000,10,19630800],[6,0,3,1216,19000,15,19638400],[6,1,0,623,24000,0,14952000],[6,1,1,323,24000,0,7752000],[6,1,2,395,24000,20,7584000],[6,1,3,546,24000,10,11793600],[6,2,0,310,28000,15,7378000],[6,2,1,139,28000,5,3697400],[6,2,2,200,28000,0,5600000],[6,2,3,191,28000,0,5348000],[6,3,0,878,15000,10,11853000],[6,3,1,391,15000,5,5571750],[6,3,2,634,15000,0,9510000],[6,3,3,623,15000,20,7476000],[6,4,0,668,12000,15,6813600],[6,4,1,353,12000,0,4236000],[6,4,2,501,12000,15,5110200],[6,4,3,627,12000,15,6395400],[7,0,0,1506,19000,15,24321900],[7,0,1,771,19000,10,13184100],[7,0,2,1230,19000,10,21033000],[7,0,3,1333,19000,0,25327000],[7,1,0,670,24000,15,13668000],[7,1,1,296,24000,5,6748800],[7,1,2,505,24000,15,10302000],[7,1,3,486,24000,20,9331200],[7,2,0,309,28000,0,8652000],[7,2,1,135,28000,10,3402000],[7,2,2,210,28000,0,5880000],[7,2,3,222,28000,10,5594400],[7,3,0,964,15000,15,12291000],[7,3,1,455,15000,5,6483750],[7,3,2,651,15000,10,8788500],[7,3,3,734,15000,0,11010000],[7,4,0,829,12000,0,9948000],[7,4,1,314,12000,0,3768000],[7,4,2,505,12000,20,4848000],[7,4,3,608,12000,0,7296000],[8,0,0,1133,19000,0,21527000],[8,0,1,424,19000,0,8056000],[8,0,2,672,19000,10,11491200],[8,0,3,791,19000,0,15029000],[8,1,0,637,24000,15,12994800],[8,1,1,235,24000,0,5640000],[8,1,2,466,24000,20,8947200],[8,1,3,451,24000,0,10824000],[8,2,0,425,28000,10,10710000],[8,2,1,200,28000,5,5320000],[8,2,2,345,28000,0,9660000],[8,2,3,369,28000,0,10332000],[8,3,0,888,15000,10,11988000],[8,3,1,307,15000,5,4374750],[8,3,2,638,15000,0,9570000],[8,3,3,768,15000,0,11520000],[8,4,0,739,12000,10,7981200],[8,4,1,354,12000,10,3823200],[8,4,2,537,12000,10,5799600],[8,4,3,616,12000,0,7392000],[9,0,0,773,19000,5,13952650],[9,0,1,317,19000,5,5721850],[9,0,2,541,19000,0,10279000],[9,0,3,668,19000,10,11422800],[9,1,0,573,24000,0,13752000],[9,1,1,321,24000,5,7318800],[9,1,2,376,24000,0,9024000],[9,1,3,536,24000,0,12864000],[9,2,0,655,28000,0,18340000],[9,2,1,277,28000,10,6980400],[9,2,2,432,28000,10,10886400],[9,2,3,436,28000,15,10376800],[9,3,0,776,15000,10,10476000],[9,3,1,376,15000,5,5358000],[9,3,2,528,15000,20,6336000],[9,3,3,675,15000,0,10125000],[9,4,0,772,12000,20,7411200],[9,4,1,340,12000,10,3672000],[9,4,2,530,12000,10,5724000],[9,4,3,558,12000,15,5691600]]};
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+let D = null;                       // {months, products, channels, rows:[[m,p,c,qty,price,disc,rev]]}
+const sel = { month:new Set(), product:new Set(), channel:new Set() };
+let stackBy = 'channel';
+
+/* ---------- 숫자 형식 ---------- */
+const nf = new Intl.NumberFormat('ko-KR');
+function won(n){ return nf.format(Math.round(n)) + '원'; }
+function short(n){
+  const a = Math.abs(n);
+  if(a >= 1e8){ const v = n/1e8; return (Math.abs(v) >= 10 ? v.toFixed(1) : v.toFixed(2)).replace(/\.?0+$/,'') + '억'; }
+  if(a >= 1e4) return nf.format(Math.round(n/1e4)) + '만';
+  return nf.format(Math.round(n));
+}
+function axisFmt(n){
+  if(n === 0) return '0';
+  if(n >= 1e8) return (n/1e8).toString().replace(/(\.\d)\d+$/,'$1') + '억';
+  if(n >= 1e7) return (n/1e7) + '천만';
+  return short(n);
+}
+function monthLabel(m){ return parseInt(m.slice(5),10) + '월'; }
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- 데이터 읽기 ---------- */
+function parseCSV(text){
+  const out = []; let row = [], cur = '', q = false;
+  for(let i=0;i<text.length;i++){
+    const ch = text[i];
+    if(q){ if(ch === '"'){ if(text[i+1] === '"'){ cur += '"'; i++; } else q = false; } else cur += ch; }
+    else if(ch === '"') q = true;
+    else if(ch === ','){ row.push(cur); cur = ''; }
+    else if(ch === '\n' || ch === '\r'){ if(ch === '\r' && text[i+1] === '\n') i++; row.push(cur); out.push(row); row = []; cur = ''; }
+    else cur += ch;
+  }
+  if(cur !== '' || row.length){ row.push(cur); out.push(row); }
+  return out.filter(r => r.some(c => c.trim() !== ''));
+}
+function fromTable(t){
+  const head = t[0].map(h => h.trim());
+  const col = name => head.findIndex(h => h.startsWith(name));
+  const ix = { m:col('월'), p:col('제품'), c:col('채널'), q:col('판매수량'), pr:col('정가'), d:col('할인율'), r:col('매출') };
+  if(Object.values(ix).some(i => i < 0)) throw new Error('열 이름이 예상과 다릅니다: ' + head.join(', '));
+  const num = s => Number(String(s).replace(/[,\s원%]/g,'')) || 0;
+  const months = [], products = [], channels = [], rows = [];
+  const idx = (arr, v) => { let i = arr.indexOf(v); if(i < 0){ arr.push(v); i = arr.length-1; } return i; };
+  for(const r of t.slice(1)){
+    const m = (r[ix.m]||'').trim(); if(!/^\d{4}-\d{2}$/.test(m)) continue;
+    rows.push([idx(months,m), idx(products,(r[ix.p]||'').trim()), idx(channels,(r[ix.c]||'').trim()),
+               num(r[ix.q]), num(r[ix.pr]), num(r[ix.d]), num(r[ix.r])]);
+  }
+  if(!rows.length) throw new Error('읽은 행이 없습니다');
+  // 월은 시간순으로 정렬
+  const order = months.map((m,i)=>[m,i]).sort((a,b)=>a[0]<b[0]?-1:1);
+  const remap = new Map(order.map(([,old],neu)=>[old,neu]));
+  rows.forEach(r => r[0] = remap.get(r[0]));
+  return { months: order.map(o=>o[0]), products, channels, rows };
+}
+async function load(){
+  const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/gviz/tq?tqx=out:csv&gid=' + SHEET_GID;
+  try{
+    const ctl = new AbortController(); const t = setTimeout(()=>ctl.abort(), 6000);
+    const res = await fetch(url, { signal: ctl.signal }); clearTimeout(t);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    D = fromTable(parseCSV(await res.text()));
+    setSource('live', '구글 시트 실시간 · ' + new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'}) + ' 읽음');
+  }catch(e){
+    D = SNAP;
+    setSource('snap', '시트를 읽지 못해 11/20 사본 표시 중');
+  }
+  buildChips(); render();
+}
+function setSource(kind, text){
+  document.getElementById('src').innerHTML = '<span class="dot ' + kind + '"></span>' + esc(text) +
+    ' · <a href="https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit#gid=' + SHEET_GID + '" target="_blank" rel="noopener">원본 시트</a>';
+}
+
+/* ---------- 필터 ---------- */
+const DIM_INDEX = { month:0, product:1, channel:2 };
+function names(dim){ return dim === 'month' ? D.months : dim === 'product' ? D.products : D.channels; }
+function rowsExcept(skip){
+  return D.rows.filter(r => ['month','product','channel'].every(dim =>
+    dim === skip || sel[dim].size === 0 || sel[dim].has(r[DIM_INDEX[dim]])));
+}
+function toggle(dim, i){
+  if(sel[dim].has(i)) sel[dim].delete(i); else sel[dim].add(i);
+  if(sel[dim].size === names(dim).length) sel[dim].clear();
+  render();
+}
+function buildChips(){
+  for(const dim of ['month','product','channel']){
+    const box = document.getElementById('f-' + dim); box.innerHTML = '';
+    const all = document.createElement('button');
+    all.className = 'chip all'; all.textContent = '전체'; all.dataset.all = '1';
+    all.onclick = () => { sel[dim].clear(); render(); };
+    box.appendChild(all);
+    names(dim).forEach((n, i) => {
+      const b = document.createElement('button');
+      b.className = 'chip'; b.dataset.i = i;
+      b.textContent = dim === 'month' ? monthLabel(n) : n;
+      b.title = n;
+      b.onclick = () => toggle(dim, i);
+      box.appendChild(b);
+    });
+  }
+}
+function syncChips(){
+  for(const dim of ['month','product','channel']){
+    document.querySelectorAll('#f-' + dim + ' .chip').forEach(b => {
+      const on = b.dataset.all ? sel[dim].size === 0 : sel[dim].has(+b.dataset.i);
+      b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+  }
+  document.getElementById('reset').hidden = !(sel.month.size || sel.product.size || sel.channel.size);
+}
+document.getElementById('reset').onclick = () => { sel.month.clear(); sel.product.clear(); sel.channel.clear(); render(); };
+document.querySelectorAll('.seg button').forEach(b => b.onclick = () => {
+  stackBy = b.dataset.stack;
+  document.querySelectorAll('.seg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+  render();
+});
+
+/* ---------- 툴팁 ---------- */
+const tip = document.getElementById('tip');
+function showTip(html, ev){
+  tip.innerHTML = html; tip.classList.add('on');
+  const r = tip.getBoundingClientRect();
+  let x = ev.clientX + 14, y = ev.clientY + 14;
+  if(x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
+  if(y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14;
+  tip.style.left = Math.max(8,x) + 'px'; tip.style.top = Math.max(8,y) + 'px';
+}
+function showTipAt(html, el){
+  const b = el.getBoundingClientRect();
+  showTip(html, { clientX: b.left + b.width/2, clientY: b.top + b.height/2 });
+}
+function hideTip(){ tip.classList.remove('on'); }
+
+/* ---------- SVG 도우미 ---------- */
+function el(tag, attrs, parent){
+  const e = document.createElementNS(SVGNS, tag);
+  for(const k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+// 한쪽 끝만 둥근 막대 (side: 'top' | 'right')
+function barPath(x, y, w, h, rad, side){
+  if(w <= 0 || h <= 0) return '';
+  if(side === 'top'){
+    const r = Math.min(rad, w/2, h);
+    return `M${x},${y+h}V${y+r}Q${x},${y} ${x+r},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h}Z`;
+  }
+  if(side === 'right'){
+    const r = Math.min(rad, h/2, w);
+    return `M${x},${y}H${x+w-r}Q${x+w},${y} ${x+w},${y+r}V${y+h-r}Q${x+w},${y+h} ${x+w-r},${y+h}H${x}Z`;
+  }
+  return `M${x},${y}h${w}v${h}h${-w}Z`;
+}
+function niceMax(v){
+  if(v <= 0) return 1;
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for(const m of [1,1.5,2,2.5,3,4,5,6,8,10]) if(m*p >= v) return m*p;
+  return 10*p;
+}
+const SERIES = ['var(--s1)','var(--s2)','var(--s3)','var(--s4)','var(--s5)'];
+
+/* ---------- 월별 쌓은 막대 ---------- */
+function drawMonthly(){
+  const host = document.getElementById('c-month'); host.innerHTML = '';
+  const rows = rowsExcept('month');
+  const keys = stackBy === 'channel' ? D.channels : D.products;
+  const ki = stackBy === 'channel' ? 2 : 1;
+  const keySel = stackBy === 'channel' ? sel.channel : sel.product;
+  const shown = keys.map((k,i)=>i).filter(i => keySel.size === 0 || keySel.has(i));
+
+  document.getElementById('legend').innerHTML = shown.map(i =>
+    `<span><i class="sw" style="background:${SERIES[i % SERIES.length]}"></i>${esc(keys[i])}</span>`).join('');
+
+  const M = D.months.length;
+  const val = D.months.map(() => keys.map(() => 0));
+  rows.forEach(r => { val[r[0]][r[ki]] += r[6]; });
+  const totals = val.map(v => v.reduce((a,b)=>a+b,0));
+  const max = niceMax(Math.max(...totals));
+
+  const W = Math.max(host.clientWidth, 300), H = 280;
+  const pad = { l:48, r:8, t:22, b:26 };
+  const iw = W - pad.l - pad.r, ih = H - pad.t - pad.b;
+  const svg = el('svg', { viewBox:`0 0 ${W} ${H}`, height:H, role:'img', 'aria-label':'월별 매출 쌓은 막대 차트' }, host);
+  const y = v => pad.t + ih - v/max*ih;
+
+  for(let k=0;k<=4;k++){
+    const v = max*k/4, yy = y(v);
+    el('line', { x1:pad.l, x2:W-pad.r, y1:yy, y2:yy, stroke: k===0 ? 'var(--axis)' : 'var(--grid)', 'stroke-width':1 }, svg);
+    el('text', { x:pad.l-8, y:yy+4, 'text-anchor':'end', class:'tick' }, svg).textContent = axisFmt(v);
+  }
+
+  const band = iw / M, bw = Math.min(46, band*0.62);
+  const anySel = sel.month.size > 0;
+  const peak = totals.indexOf(Math.max(...totals));
+
+  D.months.forEach((m, mi) => {
+    const cx = pad.l + band*mi + band/2, x0 = cx - bw/2;
+    const g = el('g', { class:'col-hit', tabindex:0, role:'button',
+      'aria-label': `${monthLabel(m)} ${short(totals[mi])}원${sel.month.has(mi)?' (선택됨)':''}`,
+      'aria-pressed': sel.month.has(mi) ? 'true':'false' }, svg);
+    el('rect', { class:'bg', x:pad.l+band*mi+2, y:pad.t-14, width:band-4, height:ih+14, rx:6 }, g);
+    const faded = anySel && !sel.month.has(mi);
+    let acc = 0;
+    const segs = shown.filter(i => val[mi][i] > 0);
+    segs.forEach((i, si) => {
+      const v = val[mi][i]; const top = y(acc + v), bot = y(acc);
+      const isTop = si === segs.length-1;
+      const h = Math.max(0, bot - top - (si > 0 ? 2 : 0)); // 2px 표면 간격
+      el('path', { d: barPath(x0, top, bw, h, 4, isTop ? 'top' : 'none'),
+        fill: faded ? 'var(--dim)' : SERIES[i % SERIES.length] }, g);
+      acc += v;
+    });
+    el('text', { x:cx, y:H-8, 'text-anchor':'middle', class: faded ? 'tick' : '' }, g).textContent = monthLabel(m);
+    // 값 라벨은 선택된 달 또는 최고 월에만
+    if(totals[mi] > 0 && (sel.month.has(mi) || (!anySel && mi === peak)))
+      el('text', { x:cx, y:y(totals[mi])-6, 'text-anchor':'middle', style:'fill:var(--ink);font-weight:600' }, g).textContent = short(totals[mi]);
+
+    const html = () => `<b>${esc(m)}</b>` + shown.slice().reverse().map(i =>
+        `<div class="r"><span><i class="sw" style="background:${SERIES[i % SERIES.length]}"></i>${esc(keys[i])}</span><span>${short(val[mi][i])}</span></div>`).join('') +
+      `<div class="r tot"><span>합계</span><span>${won(totals[mi])}</span></div>`;
+    g.addEventListener('mousemove', ev => showTip(html(), ev));
+    g.addEventListener('mouseleave', hideTip);
+    g.addEventListener('focus', () => showTipAt(html(), g));
+    g.addEventListener('blur', hideTip);
+    g.addEventListener('click', () => { hideTip(); toggle('month', mi); });
+    g.addEventListener('keydown', ev => { if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); toggle('month', mi); } });
+  });
+}
+
+/* ---------- 가로 막대 (제품 / 채널) ---------- */
+function drawBars(dim){
+  const host = document.getElementById('c-' + dim); host.innerHTML = '';
+  const rows = rowsExcept(dim);
+  const list = names(dim), di = DIM_INDEX[dim];
+  const rev = list.map(() => 0), qty = list.map(() => 0);
+  rows.forEach(r => { rev[r[di]] += r[6]; qty[r[di]] += r[3]; });
+  const total = rev.reduce((a,b)=>a+b,0);
+  const order = list.map((_,i)=>i).sort((a,b)=>rev[b]-rev[a]);
+  const max = Math.max(...rev, 1);
+
+  const W = Math.max(host.clientWidth, 280), rowH = 40;
+  const labelW = Math.min(150, W*0.38), valW = 92;
+  const H = rowH * list.length + 4;
+  const svg = el('svg', { viewBox:`0 0 ${W} ${H}`, height:H, role:'img', 'aria-label': (dim==='product'?'제품':'채널') + '별 매출 가로 막대 차트' }, host);
+  const bx = labelW, bwMax = W - labelW - valW;
+  const anySel = sel[dim].size > 0;
+
+  order.forEach((i, k) => {
+    const y0 = k*rowH;
+    const on = !anySel || sel[dim].has(i);
+    const g = el('g', { class:'bar-hit' + (on ? '' : ' dimmed'), tabindex:0, role:'button',
+      'aria-label': `${list[i]} ${short(rev[i])}원${sel[dim].has(i)?' (선택됨)':''}`, 'aria-pressed': sel[dim].has(i)?'true':'false' }, svg);
+    el('rect', { class:'bg', x:0, y:y0+2, width:W, height:rowH-4, rx:6 }, g);
+    const lbl = el('text', { x:8, y:y0+rowH/2+4, class:'bar-label' }, g);
+    lbl.textContent = list[i].length > 13 && W < 420 ? list[i].slice(0,12) + '…' : list[i];
+    const w = rev[i] / max * bwMax;
+    el('path', { d: barPath(bx, y0+11, Math.max(w, rev[i] > 0 ? 2 : 0), rowH-22, 4, 'right'),
+      fill: on ? 'var(--s1)' : 'var(--dim)' }, g);
+    const pct = total ? Math.round(rev[i]/total*1000)/10 : 0;
+    el('text', { x:W-6, y:y0+rowH/2+4, 'text-anchor':'end', class:'bar-val' }, g).textContent = short(rev[i]) + ' · ' + pct + '%';
+
+    const html = () => `<b>${esc(list[i])}</b>` +
+      `<div class="r"><span>매출</span><span>${won(rev[i])}</span></div>` +
+      `<div class="r"><span>비중</span><span>${pct}%</span></div>` +
+      `<div class="r"><span>판매수량</span><span>${nf.format(qty[i])}개</span></div>`;
+    g.addEventListener('mousemove', ev => showTip(html(), ev));
+    g.addEventListener('mouseleave', hideTip);
+    g.addEventListener('focus', () => showTipAt(html(), g));
+    g.addEventListener('blur', hideTip);
+    g.addEventListener('click', () => { hideTip(); toggle(dim, i); });
+    g.addEventListener('keydown', ev => { if(ev.key === 'Enter' || ev.key === ' '){ ev.preventDefault(); toggle(dim, i); } });
+  });
+}
+
+/* ---------- KPI ---------- */
+function drawKpis(){
+  const rows = rowsExcept(null);
+  const rev = rows.reduce((a,r)=>a+r[6],0);
+  const qty = rows.reduce((a,r)=>a+r[3],0);
+  const list = rows.reduce((a,r)=>a+r[3]*r[4],0);
+  const months = new Set(rows.map(r=>r[0]));
+  const ms = [...months].sort((a,b)=>a-b);
+  // 마지막 달 vs 그 전 달 (같은 제품·채널 조건)
+  let delta = '';
+  const last = ms[ms.length-1];
+  if(last > 0){
+    const base = D.rows.filter(r => (sel.product.size===0||sel.product.has(r[1])) && (sel.channel.size===0||sel.channel.has(r[2])));
+    const a = base.filter(r=>r[0]===last).reduce((s,r)=>s+r[6],0);
+    const b = base.filter(r=>r[0]===last-1).reduce((s,r)=>s+r[6],0);
+    if(b > 0){
+      const p = (a/b-1)*100;
+      delta = `${monthLabel(D.months[last])} 전월 대비 ${p >= 0 ? '▲' : '▼'} ${Math.abs(p).toFixed(1)}%`;
+    }
+  }
+  const range = ms.length ? (ms.length === 1 ? D.months[ms[0]] : `${monthLabel(D.months[ms[0]])}–${monthLabel(D.months[last])} 중 ${ms.length}개월`) : '해당 없음';
+  const k = [
+    ['총매출', short(rev) + '원', range],
+    ['월평균 매출', ms.length ? short(rev/ms.length) + '원' : '–', delta || '비교할 전월 없음'],
+    ['판매수량', nf.format(qty) + '개', '개당 평균 ' + (qty ? nf.format(Math.round(rev/qty)) : 0) + '원'],
+    ['평균 할인율', list ? ((1 - rev/list)*100).toFixed(1) + '%' : '–', '정가 기준 ' + short(list) + '원'],
+  ];
+  document.getElementById('kpis').innerHTML = k.map(([a,b,c]) =>
+    `<div class="kpi"><div class="k">${a}</div><div class="v">${b}</div><div class="d">${esc(c)}</div></div>`).join('');
+}
+
+/* ---------- 표 ---------- */
+function drawTable(){
+  const rows = rowsExcept(null);
+  const P = D.products.map((_,i)=>i).filter(i => sel.product.size===0 || sel.product.has(i));
+  const C = D.channels.map((_,i)=>i).filter(i => sel.channel.size===0 || sel.channel.has(i));
+  const m = {}; rows.forEach(r => { const k = r[1]+'|'+r[2]; m[k] = (m[k]||0) + r[6]; });
+  const cell = v => v ? `<td>${nf.format(v)}</td>` : `<td class="zero">–</td>`;
+  let h = '<table><thead><tr><th>제품</th>' + C.map(c=>`<th>${esc(D.channels[c])}</th>`).join('') + '<th>합계</th></tr></thead><tbody>';
+  const colTot = C.map(()=>0); let all = 0;
+  P.forEach(p => {
+    let t = 0;
+    h += `<tr><td>${esc(D.products[p])}</td>` + C.map((c,ci) => { const v = m[p+'|'+c]||0; t += v; colTot[ci] += v; return cell(v); }).join('') + `<td><b>${nf.format(t)}</b></td></tr>`;
+    all += t;
+  });
+  h += '</tbody><tfoot><tr><td>합계</td>' + colTot.map(v=>`<td>${nf.format(v)}</td>`).join('') + `<td>${nf.format(all)}</td></tr></tfoot></table>`;
+  document.getElementById('table').innerHTML = h;
+  const ms = sel.month.size ? [...sel.month].sort((a,b)=>a-b).map(i=>monthLabel(D.months[i])).join(', ') : '전체 기간';
+  document.getElementById('tbl-note').textContent = '단위: 원 · ' + ms;
+}
+
+function render(){
+  if(!D) return;
+  syncChips(); drawKpis(); drawMonthly(); drawBars('product'); drawBars('channel'); drawTable();
+  document.getElementById('foot').textContent =
+    `데이터 ${D.rows.length}행 · ${D.months[0]} ~ ${D.months[D.months.length-1]} · 매출 = 판매수량 × 정가 × (1 − 할인율)`;
+}
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(render, 120); });
+load();
+</script>
+</body>
+</html>
